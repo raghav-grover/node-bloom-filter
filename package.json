@@ -1,0 +1,19 @@
+{
+  "name": "bloom_filter",
+  "version": "1.0.0",
+  "description": "A bloom filter which supports deletion as well",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "Bloom",
+    "filter"
+  ],
+  "author": "Raghav Grover",
+  "license": "ISC",
+  "dependencies": {
+    "murmurhash3": "^0.4.0",
+    "object-sizeof": "^1.2.0"
+  }
+}
