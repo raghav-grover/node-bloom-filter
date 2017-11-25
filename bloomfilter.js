@@ -11,7 +11,11 @@ let defaultOptions = {
     isCounting: false
 }
 const LN2_SQUARE = Math.LN2 * Math.LN2;
-var bloomFilter = function (options) {
+var bloomFilter = function (options, serializedObject) {
+    if (serializedObject) {
+        deserializeBloomFilter.call(this, serializedObject);
+        return;
+    }
     events.EventEmitter.call(this);
     options = options || {};
     options = Object.assign(defaultOptions, options);
@@ -32,7 +36,7 @@ var bloomFilter = function (options) {
         this.bitsPerCounter = 4;
         byteSize = byteSize * this.bitsPerCounter;
     }
-    this.buffer = Buffer.alloc(byteSize);
+    this.buffer = new ArrayBuffer(byteSize);
     this.array = new Uint8Array(this.buffer);
     createSeeds(this);
 }
@@ -70,31 +74,63 @@ bloomFilter.prototype.delete = function (element) {
     });
 }
 
-bloomFilter.prototype.serialize = function () {
+bloomFilter.prototype.serialize = function (isJson = false) {
     let byteSize = this.array.byteLength;
     let isCounting = this.isCounting;//1byte
     let bitsPerCounter = this.bitsPerCounter;//1byte
     let seeds = this.seeds;//seeds.length*4
     let bytesForSeeds = seeds.length * 4;
     let hashes = this.hashes;//1 byte
-    let newBuffer = Buffer.alloc(byteSize + 1 + 1 + bytesForSeeds + 1);
+    let idNumber = 214;//1 byte for identification
+    let newBuffer = new ArrayBuffer(byteSize + 1 + 1 + bytesForSeeds + 1 + 1 + 4);
+    let dv = new DataView(newBuffer);
     let writer = 0;
-    newBuffer.writeUInt8(isCounting, writer++);
-    newBuffer.writeUInt8(bitsPerCounter, writer++);
-    newBuffer.writeUInt8(hashes, writer++);
+    dv.setUint8(writer++, idNumber);//For identification while deseriaization
+    dv.setUint8(writer++, isCounting);
+    dv.setUint8(writer++, bitsPerCounter);
+    dv.setUint8(writer++, hashes);
+    dv.setUint32(writer, byteSize);
+    writer = writer + 4;
     for (let i = 0; i < seeds.length; i++) {
-        newBuffer.writeUInt32LE(seeds[i], writer);
+        dv.setUint32(writer, seeds[i]);
         writer = writer + 4;
     }
-    this.buffer.copy(newBuffer, writer, 0, this.buffer.byteLength - 1);
-    let newDataView1 = new Uint8Array(newBuffer);
-    newDataView1.forEach((item, index) => {
-        if (item > 0) {
-            console.log(index, item);
-        }
+    this.array.forEach((elem, index) => {
+        dv.setInt8(writer++, elem);
     });
-
+    return newBuffer;
 }
+
+function deserializeBloomFilter(serialized) {
+    if (!serialized instanceof ArrayBuffer) {
+        throw new Error('Not an instance of ArrayBuffer'); return;
+    }
+    let dv = new DataView(serialized);
+    console.log(dv.getUint8(0));
+    if (dv.getUint8(0) !== 214) {
+        throw new Error('Signature mismatch');
+    }
+    let isCounting = dv.getUint8(1);
+    this.isCounting = isCounting;
+    let bitsPerCounter = dv.getUint8(2);
+    this.bitsPerCounter = bitsPerCounter;
+    let hashCount = dv.getUint8(3);
+    this.hashes = hashCount;
+    let byteSize = dv.getUint32(4);
+    let byteRead = 8;
+    this.seeds = new Array(hashCount);
+    for (let i = 0; i < hashCount; i++) {
+        this.seeds[i] = dv.getUint32(byteRead);
+        byteRead = byteRead + 4;
+    }
+    this.buffer = serialized.slice(byteRead, dv.byteLength);
+    this.array = new Uint16Array(this.buffer);
+    //this.array = getMyDataView(this.buffer, bitsPerCounter);
+    for (let i = byteRead, counter = 0; i < dv.byteLength; i++ , counter++) {
+        //  this.array[counter] = dv.getUint16(i);
+    }
+}
+
 
 function createSeeds(bloomFilter) {
     let count = bloomFilter.hashes;
@@ -115,7 +151,7 @@ function optimize(bloomFilter, numberOfElements, falsePostiveRate) {
     bloomFilter.hashes = Math.ceil((bloomFilter.bits / numberOfElements) * Math.LN2);
 }
 
-function dataView(buffer, bitsPerCounter) {
+function getMyDataView(buffer, bitsPerCounter) {
     //Returns the data view, Uint8, UInt16.. Depending upon counter that is being passed
     if (bitsPerCounter == 8) {
         return new Uint8Array(buffer);
@@ -173,9 +209,9 @@ function setBit(buffer, position, isCounting) {
         if (element >= Math.pow(2, this.bitsPerCounter) - 1) {
             //Resize this array
             this.bitsPerCounter = 2 * this.bitsPerCounter;
-            const newBuffer = Buffer.alloc(this.bits * (this.bitsPerCounter / 8));
+            const newBuffer = new ArrayBuffer(this.bits * (this.bitsPerCounter / 8));
             //Now copy the data from old buffer to new buffer and reassign the buffer in bloomfilter
-            const newDataView = dataView(newBuffer, this.bitsPerCounter);
+            const newDataView = getMyDataView(newBuffer, this.bitsPerCounter);
             copyArrayCounters(this.array, newDataView, this.bitsPerCounter);
             this.array = newDataView;
             this.buffer = newBuffer;
@@ -291,7 +327,7 @@ function getPositionsAfterApplyingHash(bloomFilter, element) {
     let positionArray = [];
     for (let i = 1; i <= bloomFilter.hashes; i++) {
         //Ensure that positions are unqiue other wise it will cause counting blooming flter to be errorneous
-        let position = mmh3.murmur32Sync(element.toString(), bloomFilter.seeds[i]) % bloomFilter.bits;
+        let position = mmh3.murmur32Sync(element.toString(), bloomFilter.seeds[i]) % (bloomFilter.bits - 1);
         if (positionArray.indexOf(position) != -1 || position == 0) {
             //Shouldn't be done ideally, two hello can yeild diff hashes before and after the old and new seeds
             createSeeds(bloomFilter);
