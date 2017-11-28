@@ -38,6 +38,7 @@ var bloomFilter = function (options, serializedObject) {
     }
     this.buffer = new ArrayBuffer(byteSize);
     this.array = new Uint8Array(this.buffer);
+    this.randomSeed = crypto.randomBytes(4).readUInt32BE(0);
     createSeeds(this);
 }
 util.inherits(bloomFilter, events.EventEmitter);
@@ -124,7 +125,7 @@ function deserializeBloomFilter(serialized) {
         byteRead = byteRead + 4;
     }
     this.buffer = serialized.slice(byteRead, dv.byteLength);
-    this.array = new Uint16Array(this.buffer);
+    this.array = new Uint8Array(this.buffer);
     //this.array = getMyDataView(this.buffer, bitsPerCounter);
     for (let i = byteRead, counter = 0; i < dv.byteLength; i++ , counter++) {
         //  this.array[counter] = dv.getUint16(i);
@@ -325,17 +326,12 @@ function getNibblesFromInteger(element) {
 //Hashing using the seeds generated above
 function getPositionsAfterApplyingHash(bloomFilter, element) {
     let positionArray = [];
+    let pos = mmh3.murmur128Sync(element.toString(), this.randomSeed);
     for (let i = 1; i <= bloomFilter.hashes; i++) {
         //Ensure that positions are unqiue other wise it will cause counting blooming flter to be errorneous
-        let position = mmh3.murmur32Sync(element.toString(), bloomFilter.seeds[i]) % (bloomFilter.bits - 1);
-        if (positionArray.indexOf(position) != -1 || position == 0) {
-            //Shouldn't be done ideally, two hello can yeild diff hashes before and after the old and new seeds
-            createSeeds(bloomFilter);
-            i = 1;
-            positionArray = [];
-        } else {
-            positionArray.push(position);
-        }
+        let position = pos[0] + i * pos[1];
+        position = position % (bloomFilter.bits - 1);
+        positionArray.push(position);
     }
     return positionArray;
 }
