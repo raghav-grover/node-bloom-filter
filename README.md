@@ -84,5 +84,5 @@ bFilter.on('resized',(bitsPerCounter)=>{
 To test: `npm run test`
 
 ## Acknowledgements
-  - Hat tip to anyone who uses and contributes to the code.
+  - Hat tip to anyone who uses and contributes to the code..
   - Purav Aggarwal :)
