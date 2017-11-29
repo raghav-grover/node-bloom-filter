@@ -5,7 +5,7 @@ Node bloom filter is the most sophisticated Bloom filter available for NodeJs wh
   - Supports **deletions**
   - Can yield a desired false positive rate(probabilty) when given the total number of elements in the sets
   - Supports an optimisation flag to calculate the number of hashes and bits to use internally
-  - Serialization to a Arraybuffer, which can be converted to JSON/UTF-8/base64 that is left to the user :)
+  - Serialization to a Arraybuffer, which can be converted to JSON/UTF-8/base64 and is left to the user :)
   - Dynamically resizes the underlying Arraybuffer to handle the counter overflows when used as a counting bloom filter.
   - Implements double hashing technique to generate multiple hashes using ***murmur3***
   - Uses bit manipulations to optimise on memory usage
@@ -73,9 +73,16 @@ let bFilterArrayBuffer=bFilter.serialize();
 let newFilter=new bloomFilter({},bFilterArrayBuffer);
 newFilter.add('hello, i am the best bloom filter');
 ```
+### On resize
+```javascript
+bFilter.on('resized',(bitsPerCounter)=>{
+    console.log('bits per counter',bitsPerCounter);
+});
+```
+
 ## Test
 To test: `npm run test`
 
 ## Acknowledgements
-  - Hat tip to anyone who uses and contributes to the code :)
+  - Hat tip to anyone who uses and contributes to the code.
   - Purav Aggarwal :)
