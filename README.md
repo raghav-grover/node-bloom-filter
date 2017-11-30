@@ -1,15 +1,15 @@
 # Node Bloom filter 
 
-Node bloom filter is the most sophisticated Bloom filter available for NodeJs which supoorts deletions and can be optionally transformed to a counting bloom filter and can thus perform delete operations as well.
+Node bloom filter is a sophisticated Bloom filter available for NodeJs which can be optionally transformed to a counting bloom filter and can thus perform delete operations as well.
 
   - Supports **deletions**
-  - Can yield a desired false positive rate(probabilty) when given the total number of elements in the sets
+  - Can yield a desired false positive rate(probability) when given the total number of elements in the sets
   - Supports an optimisation flag to calculate the number of hashes and bits to use internally
-  - Serialization to a Arraybuffer, which can be converted to JSON/UTF-8/base64 and is left to the user :)
+  - Serialization to an Arraybuffer, which can be converted to JSON/UTF-8/base64 and is left to the user :)
   - Dynamically resizes the underlying Arraybuffer to handle the counter overflows when used as a counting bloom filter.
   - Implements double hashing technique to generate multiple hashes using ***murmur3***
   - Uses bit manipulations to optimise on memory usage
-  - When implemented as a counting bloom, it can supports ***4,8,16,32*** bits per counters to handle overflows
+  - When implemented as a counting bloom filter, it can support ***4,8,16,32*** bits per counters to handle overflows
   - Extends Events to notify when the underlying Arraybuffer is resized
 
 ## Getting Started
@@ -21,16 +21,16 @@ To install: `npm install node_bloom_filter`
 ### Bloom Filter
 To create a general implementation, pass the following in the constructor:
 ```javascript
-let bfilter = new bloomFilter({
+let bFilter = new bloomFilter({
     nHash:10,
     nBits:1024*8
 });
 ```
-If no options are passed, the filter created has a false positive rate of **0.001** which can support **569** elements.
+If no options are passed, the filter created by default can support ***569*** members with a false rate of upto ***0.001***
 
 To create the optimized implementation, pass an object in the constructor:
 ```javascript
-let bfilter = new bloomFilter({
+let bFilter = new bloomFilter({
     optimize: true,/*This automatically calculates number of hashes and bits to be used internally*/
     falsePositiveRate: 0.001,/*Desired false positive rate,less rate will use more memory internally*/
     isCounting: false,// False by default,
@@ -40,7 +40,7 @@ let bfilter = new bloomFilter({
 
 To create a counting bloom Filter that supports **deletions** as well, just pass 
 ```javascript
-let bfilter = new bloomFilter({
+let bFilter = new bloomFilter({
     optimize: true,/*This automatically calculates number of hashes and bits to be used internally*/
     falsePositiveRate: 0.001,/*Desired false positive rate,less rate will use more memory internally*/
     isCounting: true,// False by default,
